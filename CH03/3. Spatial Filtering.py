@@ -1,8 +1,21 @@
 from math import exp
 import numpy as np
 import cv2
+import os
+import time
+
+#计算程序执行时间的装饰器
+def time_test(fn):
+    def _wrapper(*args, **kwargs):
+        start = time.clock()
+        result = fn(*args, **kwargs)
+        print ("%s() cost %s second" % (fn.__name__, time.clock() - start))
+        return result
+    return _wrapper
+
 
 #生成卷积核
+@time_test
 def filter_kernal(kernal_type, kernal_size = (3, 3)):
 	#均值滤波器
 	mean_filter = lambda kernal_size: np.ones(kernal_size, dtype = 'float') / (kernal_size[0]*kernal_size[1])			
@@ -32,6 +45,7 @@ def filter_kernal(kernal_type, kernal_size = (3, 3)):
 
 
 #卷积操作
+#@time_test
 def convolution(img, kernal, postion, kernal_size = None):
 	if(not kernal_size): kernal_size = kernal.shape
 
@@ -44,18 +58,35 @@ def convolution(img, kernal, postion, kernal_size = None):
 
 
 #滤波器
+@time_test
 def filter(img, kernal_type, kernal_size):
 	shape = img.shape
 	new_shape = [shape[0] + (kernal_size[0] - 1), shape[1] + (kernal_size[1] - 1)]
 	#边界外部分区域扩展为0值区域
 	img_copy = np.zeros(new_shape, dtype = 'float')
-	img_copy[(kernal_size[0] - 1)/2 : new_shape[0] - (kernal_size[0] - 1)/2, (kernal_size[1] - 1)/2 : new_shape[1] - (kernal_size[1] - 1)/2] = img
+	img_copy[(kernal_size[0] - 1)//2 : new_shape[0] - (kernal_size[0] - 1)//2, (kernal_size[1] - 1)//2 : new_shape[1] - (kernal_size[1] - 1)//2] = img
 
-	new_img = np.zeros(new_shape, dtype = 'float')
+	new_img = np.zeros(shape, dtype = 'float')
 	kernal = filter_kernal(kernal_type, kernal_size)
-	pass
+	
+	x_axis = np.arange((kernal_size[0] - 1)//2, new_shape[0] - (kernal_size[0] - 1)//2)
+	y_axis = np.arange((kernal_size[1] - 1)//2, new_shape[1] - (kernal_size[1] - 1)//2)
+	for x in x_axis:
+		for y in y_axis:
+			postion = [x, y]
+			new_img[x - (kernal_size[0] - 1)//2, y - (kernal_size[1] - 1)//2] = convolution(img_copy, kernal, postion, kernal.shape)
 
+	return new_img.round().astype(dtype = 'uint8')
 
 
 if __name__ == '__main__':
-	pass
+	#切换工作目录
+	os.chdir(r'D:\application\Coding\Image Processing\CH03\DIP3E_CH03_Original_Images\DIP3E_Original_Images_CH03')
+	img = cv2.imread('Fig0333(a)(test_pattern_blurring_orig).tif', 0)
+
+	new_img = filter(img, 'gauss', [11, 11])
+
+	#显示滤波后的图片
+	cv2.imshow('New Img', new_img)
+	cv2.waitKey(0)
+	cv2.destroyAllWindows()
